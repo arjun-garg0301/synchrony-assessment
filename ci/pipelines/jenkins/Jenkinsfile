@@ -1,0 +1,314 @@
+pipeline {
+    agent any
+    
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 60, unit: 'MINUTES')
+        timestamps()
+        skipDefaultCheckout()
+    }
+    
+    environment {
+        MAVEN_OPTS = '-Xmx1024m -XX:MaxPermSize=256m'
+        DOCKER_REGISTRY = 'synchrony'
+        IMAGE_NAME = 'user-service'
+        SONAR_PROJECT_KEY = 'synchrony_image-management-platform'
+    }
+    
+    tools {
+        maven 'Maven-3.9.5'
+        jdk 'JDK-17'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                script {
+                    env.GIT_COMMIT_SHORT = sh(
+                        script: "git rev-parse --short HEAD",
+                        returnStdout: true
+                    ).trim()
+                    env.BUILD_VERSION = "${env.BUILD_NUMBER}-${env.GIT_COMMIT_SHORT}"
+                }
+            }
+        }
+        
+        stage('Code Quality') {
+            parallel {
+                stage('Checkstyle') {
+                    steps {
+                        sh 'mvn checkstyle:check'
+                        publishCheckStyleResults pattern: '**/target/checkstyle-result.xml'
+                    }
+                }
+                
+                stage('SpotBugs') {
+                    steps {
+                        sh 'mvn spotbugs:check'
+                        publishSpotBugsResults pattern: '**/target/spotbugsXml.xml'
+                    }
+                }
+                
+                stage('OWASP Dependency Check') {
+                    steps {
+                        sh 'mvn org.owasp:dependency-check-maven:check'
+                        publishHTML([
+                            allowMissing: false,
+                            alwaysLinkToLastBuild: true,
+                            keepAll: true,
+                            reportDir: 'target',
+                            reportFiles: 'dependency-check-report.html',
+                            reportName: 'OWASP Dependency Check Report'
+                        ])
+                    }
+                }
+            }
+        }
+        
+        stage('Unit Tests') {
+            steps {
+                sh 'mvn clean test -pl modules/user-service -am'
+            }
+            post {
+                always {
+                    junit 'modules/user-service/target/surefire-reports/*.xml'
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'modules/user-service/target/site/jacoco',
+                        reportFiles: 'index.html',
+                        reportName: 'Code Coverage Report'
+                    ])
+                }
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'develop'
+                    changeRequest()
+                }
+            }
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh """
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                        -Dsonar.projectName='Image Management Platform' \
+                        -Dsonar.projectVersion=${BUILD_VERSION}
+                    """
+                }
+            }
+        }
+        
+        stage('Quality Gate') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'develop'
+                }
+            }
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+        
+        stage('Integration Tests') {
+            steps {
+                script {
+                    // Start test containers
+                    sh '''
+                        docker-compose -f infra/docker/docker-compose.yml up -d postgres redis kafka
+                        sleep 30
+                    '''
+                    
+                    try {
+                        sh 'mvn clean verify -pl modules/user-service -am -Pintegration-test'
+                    } finally {
+                        // Clean up test containers
+                        sh 'docker-compose -f infra/docker/docker-compose.yml down'
+                    }
+                }
+            }
+            post {
+                always {
+                    junit 'modules/user-service/target/failsafe-reports/*.xml'
+                }
+            }
+        }
+        
+        stage('Build Application') {
+            steps {
+                sh 'mvn clean package -pl modules/user-service -am -DskipTests'
+                archiveArtifacts artifacts: 'modules/user-service/target/*.jar', fingerprint: true
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    def image = docker.build(
+                        "${DOCKER_REGISTRY}/${IMAGE_NAME}:${BUILD_VERSION}",
+                        "-f infra/docker/user-service/Dockerfile ."
+                    )
+                    
+                    // Tag with latest if main branch
+                    if (env.BRANCH_NAME == 'main') {
+                        image.tag('latest')
+                    }
+                    
+                    env.DOCKER_IMAGE = "${DOCKER_REGISTRY}/${IMAGE_NAME}:${BUILD_VERSION}"
+                }
+            }
+        }
+        
+        stage('Security Scan') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'develop'
+                }
+            }
+            steps {
+                script {
+                    sh """
+                        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                        -v \$(pwd):/tmp/.cache/ aquasec/trivy:latest \
+                        image --exit-code 0 --no-progress --format table \
+                        ${env.DOCKER_IMAGE}
+                    """
+                }
+            }
+        }
+        
+        stage('Push Docker Image') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'develop'
+                }
+            }
+            steps {
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
+                        def image = docker.image("${env.DOCKER_IMAGE}")
+                        image.push()
+                        
+                        if (env.BRANCH_NAME == 'main') {
+                            image.push('latest')
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy to Staging') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                script {
+                    // Deploy to staging environment
+                    sh """
+                        echo "Deploying ${env.DOCKER_IMAGE} to staging..."
+                        # Add your staging deployment logic here
+                        # This could involve updating Kubernetes manifests, Helm charts, etc.
+                    """
+                }
+            }
+        }
+        
+        stage('Deploy to Production') {
+            when {
+                branch 'main'
+            }
+            steps {
+                script {
+                    // Require manual approval for production deployment
+                    input message: 'Deploy to Production?', ok: 'Deploy',
+                          submitterParameter: 'DEPLOYER'
+                    
+                    sh """
+                        echo "Deploying ${env.DOCKER_IMAGE} to production..."
+                        echo "Deployed by: ${env.DEPLOYER}"
+                        # Add your production deployment logic here
+                    """
+                }
+            }
+        }
+        
+        stage('Smoke Tests') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'develop'
+                }
+            }
+            steps {
+                script {
+                    sh '''
+                        echo "Running smoke tests..."
+                        # Add smoke test logic here
+                        # curl -f http://staging-url/api/actuator/health
+                    '''
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            // Clean up workspace
+            cleanWs()
+        }
+        
+        success {
+            script {
+                if (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'develop') {
+                    slackSend(
+                        channel: '#deployments',
+                        color: 'good',
+                        message: """
+                            ✅ *Deployment Successful*
+                            Branch: ${env.BRANCH_NAME}
+                            Build: ${env.BUILD_NUMBER}
+                            Image: ${env.DOCKER_IMAGE}
+                            Deployer: ${env.DEPLOYER ?: 'System'}
+                        """
+                    )
+                }
+            }
+        }
+        
+        failure {
+            slackSend(
+                channel: '#deployments',
+                color: 'danger',
+                message: """
+                    ❌ *Build Failed*
+                    Branch: ${env.BRANCH_NAME}
+                    Build: ${env.BUILD_NUMBER}
+                    Stage: ${env.STAGE_NAME}
+                """
+            )
+        }
+        
+        unstable {
+            slackSend(
+                channel: '#deployments',
+                color: 'warning',
+                message: """
+                    ⚠️ *Build Unstable*
+                    Branch: ${env.BRANCH_NAME}
+                    Build: ${env.BUILD_NUMBER}
+                """
+            )
+        }
+    }
+}
