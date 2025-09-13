@@ -1,0 +1,946 @@
+{
+    "info": {
+        "_postman_id": "12345678-1234-1234-1234-123456789012",
+        "name": "User-Image Management Platform",
+        "description": "Complete API collection for User-Image Management Platform with JWT authentication, user management, image handling, and performance monitoring.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "_exporter_id": "12345678"
+    },
+    "item": [
+        {
+            "name": "Authentication",
+            "item": [
+                {
+                    "name": "Register User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"phoneNumber\": \"+1234567890\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/auth/register",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "auth",
+                                "register"
+                            ]
+                        },
+                        "description": "Register a new user in the system"
+                    }
+                },
+                {
+                    "name": "Login User",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 200) {",
+                                    "    const response = pm.response.json();",
+                                    "    if (response.success && response.data.accessToken) {",
+                                    "        pm.environment.set('authToken', response.data.accessToken);",
+                                    "        console.log('Auth token saved:', response.data.accessToken);",
+                                    "    }",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"password123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "Authenticate user and get JWT token"
+                    }
+                },
+                {
+                    "name": "Validate Token",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/auth/validate?token={{authToken}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "auth",
+                                "validate"
+                            ],
+                            "query": [
+                                {
+                                    "key": "token",
+                                    "value": "{{authToken}}"
+                                }
+                            ]
+                        },
+                        "description": "Validate JWT token"
+                    }
+                }
+            ],
+            "description": "Authentication and authorization endpoints"
+        },
+        {
+            "name": "User Management",
+            "item": [
+                {
+                    "name": "Get User by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/users/1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "users",
+                                "1"
+                            ]
+                        },
+                        "description": "Get user information by user ID"
+                    }
+                },
+                {
+                    "name": "Get User by Username",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/users/username/testuser",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "users",
+                                "username",
+                                "testuser"
+                            ]
+                        },
+                        "description": "Get user information by username"
+                    }
+                },
+                {
+                    "name": "Update User",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"firstName\": \"Updated\",\n  \"lastName\": \"User\",\n  \"phoneNumber\": \"+1987654321\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/users/1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "users",
+                                "1"
+                            ]
+                        },
+                        "description": "Update user information"
+                    }
+                },
+                {
+                    "name": "Check Username Availability",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/users/exists/username/newuser",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "users",
+                                "exists",
+                                "username",
+                                "newuser"
+                            ]
+                        },
+                        "description": "Check if username is available"
+                    }
+                },
+                {
+                    "name": "Check Email Availability",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/users/exists/email/new@example.com",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "users",
+                                "exists",
+                                "email",
+                                "new@example.com"
+                            ]
+                        },
+                        "description": "Check if email is available"
+                    }
+                },
+                {
+                    "name": "Deactivate User",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/users/1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "users",
+                                "1"
+                            ]
+                        },
+                        "description": "Deactivate user account"
+                    }
+                }
+            ],
+            "description": "User management operations"
+        },
+        {
+            "name": "Image Management",
+            "item": [
+                {
+                    "name": "Upload Image",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": []
+                                },
+                                {
+                                    "key": "title",
+                                    "value": "Sample Image",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "description",
+                                    "value": "This is a sample image upload",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/images/upload/1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "images",
+                                "upload",
+                                "1"
+                            ]
+                        },
+                        "description": "Upload an image for a user"
+                    }
+                },
+                {
+                    "name": "Get User Images",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/images/user/1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "images",
+                                "user",
+                                "1"
+                            ]
+                        },
+                        "description": "Get all images for a specific user"
+                    }
+                },
+                {
+                    "name": "Get Image by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/images/1?username=testuser",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "images",
+                                "1"
+                            ],
+                            "query": [
+                                {
+                                    "key": "username",
+                                    "value": "testuser"
+                                }
+                            ]
+                        },
+                        "description": "Get specific image by ID"
+                    }
+                },
+                {
+                    "name": "Update Image",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"Updated Image Title\",\n  \"description\": \"Updated image description\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/images/1?username=testuser",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "images",
+                                "1"
+                            ],
+                            "query": [
+                                {
+                                    "key": "username",
+                                    "value": "testuser"
+                                }
+                            ]
+                        },
+                        "description": "Update image metadata"
+                    }
+                },
+                {
+                    "name": "Delete Image",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/images/1?username=testuser",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "images",
+                                "1"
+                            ],
+                            "query": [
+                                {
+                                    "key": "username",
+                                    "value": "testuser"
+                                }
+                            ]
+                        },
+                        "description": "Delete an image"
+                    }
+                }
+            ],
+            "description": "Image management operations with Imgur integration"
+        },
+        {
+            "name": "Dropbox Storage",
+            "item": [
+                {
+                    "name": "Upload to Dropbox",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": []
+                                },
+                                {
+                                    "key": "title",
+                                    "value": "Dropbox Image",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "description",
+                                    "value": "Image uploaded directly to Dropbox",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/dropbox/upload/1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "dropbox",
+                                "upload",
+                                "1"
+                            ]
+                        },
+                        "description": "Upload image directly to Dropbox"
+                    }
+                },
+                {
+                    "name": "Download from Dropbox",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/dropbox/download?dropboxPath=/synchrony-assessment/user-1/images/sample.jpg",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "dropbox",
+                                "download"
+                            ],
+                            "query": [
+                                {
+                                    "key": "dropboxPath",
+                                    "value": "/synchrony-assessment/user-1/images/sample.jpg"
+                                }
+                            ]
+                        },
+                        "description": "Download image from Dropbox"
+                    }
+                },
+                {
+                    "name": "List User Dropbox Images",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/dropbox/images/1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "dropbox",
+                                "images",
+                                "1"
+                            ]
+                        },
+                        "description": "List all images for a user from Dropbox"
+                    }
+                },
+                {
+                    "name": "Download User Images as ZIP",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/dropbox/download-zip/1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "dropbox",
+                                "download-zip",
+                                "1"
+                            ]
+                        },
+                        "description": "Download all user images as ZIP file"
+                    }
+                },
+                {
+                    "name": "Delete from Dropbox",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/dropbox/delete?dropboxPath=/synchrony-assessment/user-1/images/sample.jpg",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "dropbox",
+                                "delete"
+                            ],
+                            "query": [
+                                {
+                                    "key": "dropboxPath",
+                                    "value": "/synchrony-assessment/user-1/images/sample.jpg"
+                                }
+                            ]
+                        },
+                        "description": "Delete image from Dropbox"
+                    }
+                }
+            ],
+            "description": "Dropbox storage operations as fallback to Imgur"
+        },
+        {
+            "name": "Performance Monitoring",
+            "item": [
+                {
+                    "name": "Get Performance Metrics",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/performance/metrics",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "performance",
+                                "metrics"
+                            ]
+                        },
+                        "description": "Get current performance metrics including RPM"
+                    }
+                },
+                {
+                    "name": "Reset Performance Counters",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/performance/reset",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "performance",
+                                "reset"
+                            ]
+                        },
+                        "description": "Reset all performance counters"
+                    }
+                },
+                {
+                    "name": "Health Check",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/performance/health",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "performance",
+                                "health"
+                            ]
+                        },
+                        "description": "Lightweight health check for load balancers"
+                    }
+                }
+            ],
+            "description": "Performance monitoring and metrics endpoints"
+        },
+        {
+            "name": "Cache Management",
+            "item": [
+                {
+                    "name": "Get All Cache Stats",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/cache/stats",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "cache",
+                                "stats"
+                            ]
+                        },
+                        "description": "Get statistics for all caches"
+                    }
+                },
+                {
+                    "name": "Get Specific Cache Stats",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/cache/stats/users",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "cache",
+                                "stats",
+                                "users"
+                            ]
+                        },
+                        "description": "Get statistics for a specific cache"
+                    }
+                },
+                {
+                    "name": "Clear All Caches",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/cache/clear",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "cache",
+                                "clear"
+                            ]
+                        },
+                        "description": "Clear all cache entries"
+                    }
+                },
+                {
+                    "name": "Clear Specific Cache",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/cache/clear/users",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "cache",
+                                "clear",
+                                "users"
+                            ]
+                        },
+                        "description": "Clear entries from a specific cache"
+                    }
+                },
+                {
+                    "name": "Get Cache Info",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/v1/cache/info",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "cache",
+                                "info"
+                            ]
+                        },
+                        "description": "Get basic information about all caches"
+                    }
+                }
+            ],
+            "description": "Cache management and monitoring endpoints"
+        },
+        {
+            "name": "System Endpoints",
+            "item": [
+                {
+                    "name": "Swagger UI",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/swagger-ui.html",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "swagger-ui.html"
+                            ]
+                        },
+                        "description": "Access Swagger UI documentation"
+                    }
+                },
+                {
+                    "name": "API Docs",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/v3/api-docs",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "v3",
+                                "api-docs"
+                            ]
+                        },
+                        "description": "Get OpenAPI specification"
+                    }
+                },
+                {
+                    "name": "Actuator Health",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/actuator/health",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "actuator",
+                                "health"
+                            ]
+                        },
+                        "description": "Application health check"
+                    }
+                },
+                {
+                    "name": "Actuator Info",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/actuator/info",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "actuator",
+                                "info"
+                            ]
+                        },
+                        "description": "Application information"
+                    }
+                },
+                {
+                    "name": "Actuator Metrics",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/actuator/metrics",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "actuator",
+                                "metrics"
+                            ]
+                        },
+                        "description": "Application metrics"
+                    }
+                }
+            ],
+            "description": "System and monitoring endpoints"
+        }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    ""
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    ""
+                ]
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8080/api",
+            "type": "string"
+        },
+        {
+            "key": "authToken",
+            "value": "",
+            "type": "string"
+        }
+    ]
+}
