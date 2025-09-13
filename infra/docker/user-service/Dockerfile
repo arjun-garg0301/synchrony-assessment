@@ -1,6 +1,6 @@
 # Multi-stage Docker build for User Service
 # Stage 1: Build stage
-FROM maven:3.9.5-openjdk-17-slim AS builder
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
 
 # Set working directory
 WORKDIR /app
@@ -18,7 +18,7 @@ COPY modules/user-service ./modules/user-service
 RUN mvn clean package -pl modules/user-service -am -DskipTests
 
 # Stage 2: Runtime stage
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jre
 
 # Install curl for health checks
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
