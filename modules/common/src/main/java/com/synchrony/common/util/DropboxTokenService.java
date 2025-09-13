@@ -9,9 +9,9 @@ import java.util.*;
 public class DropboxTokenService {
 
     private static final String TOKEN_URL = "https://api.dropboxapi.com/oauth2/token";
-    private static final String CLIENT_ID = "xke2z8xjt82k36o";
-    private static final String CLIENT_SECRET = "37dpdtdw9ibhxki";
-    private static final String REFRESH_TOKEN = "Qy7Lb0n-OAkAAAAAAAAAAZMSYxjCmXAWYI08NNmGSM_HvAO6k0jnv6qTbxbEybnO";
+    private static final String CLIENT_ID = "xxxxxx";
+    private static final String CLIENT_SECRET = "xxxxxx";
+    private static final String REFRESH_TOKEN = "xxxxxx";
 
     public String getAccessToken() {
         RestTemplate restTemplate = new RestTemplate();
