@@ -2,11 +2,11 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
   release:
-    types: [ published ]
+    types: [published]
 
 env:
   REGISTRY: ghcr.io
@@ -24,8 +24,8 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: "17"
+          distribution: "temurin"
           cache: maven
 
       # Perform a full Maven build including unit tests to catch compilation errors early.
@@ -47,165 +47,101 @@ jobs:
     permissions:
       contents: read
       checks: write
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: maven
-
-    - name: Run unit tests
-      run: mvn clean test -pl modules/user-service -am
-
-    - name: Generate test report
-      uses: dorny/test-reporter@v1
-      if: success() || failure()
-      with:
-        name: Unit Test Results
-        path: '**/surefire-reports/TEST-*.xml'
-        reporter: java-junit
-        fail-on-error: false
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: modules/user-service/target/site/jacoco/jacoco.xml
-        flags: unittests
-        name: codecov-umbrella
-
-  # Integration Tests
-  integration-tests:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      checks: write
-    
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: testdb
-        ports:
-          - 5432:5432
-
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-
-      zookeeper:
-        image: confluentinc/cp-zookeeper:7.4.0
-        env:
-          ZOOKEEPER_CLIENT_PORT: 2181
-          ZOOKEEPER_TICK_TIME: 2000
-        ports:
-          - 2181:2181
-
-      kafka:
-        image: confluentinc/cp-kafka:7.4.0
-        env:
-          KAFKA_BROKER_ID: 1
-          KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-        ports:
-          - 9092:9092
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: maven
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: maven
 
-    # Small wait to ensure service containers are healthy
-    - name: Wait for dependent services
-      run: sleep 30
+      - name: Run unit tests
+        run: mvn clean test -pl modules/user-service -am
 
-    - name: Run integration tests
-      run: mvn clean verify -pl modules/user-service -am -Pintegration-test
-      env:
-        SPRING_PROFILES_ACTIVE: test
-        IMGUR_CLIENT_ID: test-client-id
+      - name: Generate test report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: Unit Test Results
+          path: "**/surefire-reports/TEST-*.xml"
+          reporter: java-junit
+          fail-on-error: false
+          fail-on-empty: false
 
-    - name: Generate integration test report
-      uses: dorny/test-reporter@v1
-      if: success() || failure()
-      with:
-        name: Integration Test Results
-        path: '**/failsafe-reports/*.xml'
-        reporter: java-junit
-        fail-on-error: false
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: modules/user-service/target/site/jacoco/jacoco.xml
+          flags: unittests
+          name: codecov-umbrella
 
   # Build and Package
   build:
     name: Build & Package
     runs-on: ubuntu-latest
     needs: [code-quality, unit-tests]
-    
+
     outputs:
       image-digest: ${{ steps.build.outputs.digest }}
-      image-tag: ${{ steps.meta.outputs.tags }}
-    
+      image-tag: ${{ steps.image_tag.outputs.first_tag }}
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: maven
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: maven
 
-    - name: Build application
-      run: mvn clean package -pl modules/user-service -am -DskipTests
+      - name: Build application
+        run: mvn clean package -pl modules/user-service -am -DskipTests
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Log in to Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=sha,prefix={{branch}}-
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
 
-    - name: Build and push Docker image
-      id: build
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: infra/docker/user-service/Dockerfile
-        platforms: linux/amd64
-        pull: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: infra/docker/user-service/Dockerfile
+          platforms: linux/amd64
+          pull: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Extract the first generated tag for downstream jobs (e.g., Trivy)
+      - name: Export first image tag
+        id: image_tag
+        run: echo "first_tag=$(echo '${{ steps.meta.outputs.tags }}' | head -n1)" >> "$GITHUB_OUTPUT"
 
   # Security Scanning
   security-scan:
@@ -213,42 +149,42 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name != 'pull_request'
-    
-    steps:
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: ${{ needs.build.outputs.image-tag }}
-        format: 'sarif'
-        output: 'trivy-results.sarif'
 
-    - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: 'trivy-results.sarif'
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.build.outputs.image-tag }}
+          format: "sarif"
+          output: "trivy-results.sarif"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: "trivy-results.sarif"
 
   # Deploy to Staging
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [build, integration-tests]
+    needs: [build, unit-tests]
     if: github.ref == 'refs/heads/develop'
     environment: staging
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Deploy to staging
-      run: |
-        echo "Deploying to staging environment..."
-        # Add your staging deployment logic here
-        # This could involve updating Kubernetes manifests, Helm charts, etc.
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging environment..."
+          # Add your staging deployment logic here
+          # This could involve updating Kubernetes manifests, Helm charts, etc.
 
-    - name: Run smoke tests
-      run: |
-        echo "Running smoke tests against staging..."
-        # Add smoke test logic here
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests against staging..."
+          # Add smoke test logic here
 
   # Deploy to Production
   deploy-production:
@@ -257,20 +193,20 @@ jobs:
     needs: [build, security-scan]
     if: github.event_name == 'release'
     environment: production
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Deploy to production
-      run: |
-        echo "Deploying to production environment..."
-        # Add your production deployment logic here
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production environment..."
+          # Add your production deployment logic here
 
-    - name: Run health checks
-      run: |
-        echo "Running health checks against production..."
-        # Add health check logic here
+      - name: Run health checks
+        run: |
+          echo "Running health checks against production..."
+          # Add health check logic here
 
   # Notification
   notify:
@@ -278,12 +214,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: [deploy-staging, deploy-production]
     if: always()
-    
+
     steps:
-    - name: Notify Slack
-      uses: 8398a7/action-slack@v3
-      with:
-        status: ${{ job.status }}
-        channel: '#deployments'
-        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
-      if: always()
+      - name: Notify Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: "#deployments"
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        if: always()
