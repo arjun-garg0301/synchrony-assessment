@@ -44,6 +44,9 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
     
     steps:
     - name: Checkout code
@@ -64,8 +67,9 @@ jobs:
       if: success() || failure()
       with:
         name: Unit Test Results
-        path: 'modules/user-service/target/surefire-reports/*.xml'
+        path: '**/surefire-reports/TEST-*.xml'
         reporter: java-junit
+        fail-on-error: false
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
@@ -78,6 +82,9 @@ jobs:
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
     
     services:
       postgres:
@@ -137,8 +144,9 @@ jobs:
       if: success() || failure()
       with:
         name: Integration Test Results
-        path: 'modules/user-service/target/failsafe-reports/*.xml'
+        path: '**/failsafe-reports/*.xml'
         reporter: java-junit
+        fail-on-error: false
 
   # Build and Package
   build:
