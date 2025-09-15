@@ -29,7 +29,6 @@ import java.util.List;
            @Index(name = "idx_username", columnList = "username"),
            @Index(name = "idx_email", columnList = "email"),
            @Index(name = "idx_active", columnList = "is_active"),
-           @Index(name = "idx_created_at", columnList = "created_at")
        },
        uniqueConstraints = {
            @UniqueConstraint(name = "uk_username", columnNames = "username"),

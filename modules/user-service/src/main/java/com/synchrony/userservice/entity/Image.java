@@ -28,7 +28,6 @@ import java.time.LocalDateTime;
            @Index(name = "idx_dropbox_path", columnList = "dropbox_path"),
            @Index(name = "idx_user_id", columnList = "user_id"),
            @Index(name = "idx_image_name", columnList = "image_name"),
-           @Index(name = "idx_created_at", columnList = "created_at"),
            @Index(name = "idx_mime_type", columnList = "mime_type"),
            @Index(name = "idx_file_size", columnList = "file_size")
        })
