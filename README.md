@@ -13,7 +13,7 @@ image-management-platform/
 │   └── user-service/        # User management & image handling service
 ├── infra/
 │   ├── docker/             # Docker configurations
-│   └── monitoring/         # Prometheus, Grafana configs
+│   └── (none)              # [monitoring removed]
 ├── ci/
 │   └── pipelines/          # CI/CD pipeline configurations
 └── docs/                   # Documentation
@@ -28,7 +28,7 @@ image-management-platform/
 - **Performance**: 100K RPM optimization with Caffeine caching
 - **Rate Limiting**: Token bucket algorithm with per-endpoint limits
 - **Event-Driven**: Kafka integration for real-time events
-- **Monitoring**: Performance metrics and cache statistics
+- **Metrics**: Built-in Spring Boot actuator metrics
 
 ## Technology Stack
 
@@ -43,7 +43,7 @@ image-management-platform/
 | **Testing** | JUnit 5, Mockito, Testcontainers |
 | **Build** | Maven 3.9+ |
 | **Containerization** | Docker, Docker Compose |
-| **Monitoring** | Prometheus, Grafana |
+| **Monitoring** | Spring Boot Actuator |
 | **CI/CD** | GitHub Actions, Jenkins |
 | **Code Quality** | SonarQube, Checkstyle, SpotBugs |
 
@@ -73,29 +73,48 @@ export IMGUR_CLIENT_ID=your_imgur_client_id_here
 ### 3. Start Infrastructure Services
 
 ```bash
-cd infra/docker
-docker-compose up -d kafka prometheus grafana
+# Start Kafka & Zookeeper
+docker compose -f infra/docker/kafka-compose.yml up -d
 ```
 
 ### 4. Build and Run the Application
 
 ```bash
-# Build all modules
+# Build all modules & run locally
 mvn clean compile
 
-# Run user service
-cd modules/user-service
-mvn spring-boot:run
+# OR build & run with Docker (recommended)
+# 1) Build image (multi-stage Dockerfile)
+docker build -f infra/docker/user-service/Dockerfile -t user-service:local .
+
+# 2) Start container (maps port 8080)
+docker run -d --name user-service \
+  --network host \  # so it can talk to localhost:9092 Kafka
+  -e SPRING_PROFILES_ACTIVE=docker \
+  -e IMGUR_CLIENT_ID=$IMGUR_CLIENT_ID \
+  user-service:local
+
+# Stop & remove afterwards
+docker stop user-service && docker rm user-service
 ```
+
+---
+## Docker Cheatsheet
+
+| Task | Command |
+|------|---------|
+|List running containers|`docker ps`|
+|Stop container|`docker stop <id\|name>`|
+|Remove stopped containers|`docker container prune`|
+|Shut down Kafka compose|`docker compose -f infra/docker/kafka-compose.yml down`|
+|Tail Kafka topic|`docker exec -it $(docker ps -q -f name=kafka) kafka-console-consumer --bootstrap-server localhost:9092 --topic user-image-topic --from-beginning`|
 
 ### 5. Access the Application
 
 - **API Documentation**: http://localhost:8080/api/swagger-ui.html
 - **H2 Console**: http://localhost:8080/api/h2-console
 - **Actuator Health**: http://localhost:8080/api/actuator/health
-- **Prometheus**: http://localhost:9090
-- **Grafana**: http://localhost:3000 (admin/admin)
-- **Kafka UI**: http://localhost:8090
+- **Kafka UI**: (add your preferred tool) 
 
 ## Project Structure
 
@@ -121,8 +140,7 @@ Main microservice providing:
 
 #### Docker (`infra/docker/`)
 - **Dockerfile**: Multi-stage build for user service
-- **docker-compose.yml**: Complete development environment
-- **monitoring/**: Prometheus and Grafana configurations
+- **docker-compose.yml**: Development environment (Kafka etc.)
 
 ### CI/CD (`ci/pipelines/`)
 - **GitHub Actions**: Complete CI/CD workflow
@@ -243,23 +261,9 @@ docker run -p 8080:8080 \
 kubectl apply -f infra/k8s/
 ```
 
-## Monitoring & Observability
+## Observability
 
-### Metrics
-- **Application Metrics**: Custom business metrics
-- **JVM Metrics**: Memory, GC, threads
-- **HTTP Metrics**: Request rates, response times
-- **Database Metrics**: Connection pool, query performance
-
-### Health Checks
-- **Liveness Probe**: `/api/actuator/health/liveness`
-- **Readiness Probe**: `/api/actuator/health/readiness`
-- **Custom Health Indicators**: Database, Kafka, Redis
-
-### Logging
-- **Structured Logging**: JSON format with correlation IDs
-- **Log Levels**: Configurable per package
-- **Log Aggregation**: Ready for ELK stack integration
+Basic metrics & health endpoints are exposed via Spring Boot Actuator.
 
 ## Security
 
@@ -408,7 +412,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Links
 
 - **API Documentation**: [Swagger UI](http://localhost:8080/api/swagger-ui.html)
-- **Monitoring Dashboard**: [Grafana](http://localhost:3000)
+- **Monitoring Dashboard**: (removed)
 - **Code Quality**: [SonarQube Dashboard](https://sonarcloud.io/project/overview?id=synchrony_image-management-platform)
 - **Container Registry**: [Docker Hub](https://hub.docker.com/r/synchrony/user-service)
 
